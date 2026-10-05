@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d12">
+<title>Cinemateca Libre</title>
+<!-- Librería para transmisión P2P / Torrent directamente en el navegador -->
+<script src="https://cdn.jsdelivr.net/npm/webtorrent@latest/webtorrent.min.js"></script>
+<style>
+:root{--bg:#0b0d12;--surface:#151922;--surface2:#1d2230;--line:#2a3040;--fg:#f3f4f6;--muted:#9aa1af;--accent:#25c7b8;--accent2:#58d8ce;--danger:#ff6878;--ok:#4cd391;--shadow:0 20px 60px #0009;color-scheme:dark}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select{font:inherit}button{cursor:pointer}a{color:inherit}.hidden,[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+body{min-height:100vh}.wrap{width:min(1380px,calc(100% - 32px));margin:auto}
+header{position:sticky;top:0;z-index:30;background:#0b0d12e8;border-bottom:1px solid var(--line);backdrop-filter:blur(16px)}
+.top{display:flex;align-items:center;gap:18px;padding:15px 0}.brand{font-size:21px;font-weight:800;white-space:nowrap}.brand span{color:var(--accent)}
+.search{flex:1;display:flex;max-width:700px;margin:auto}.search input{width:100%;min-width:0;background:var(--surface);border:1px solid var(--line);color:var(--fg);border-radius:10px 0 0 10px;padding:12px 14px;outline:0}.search input:focus{border-color:var(--accent)}.search button{border:0;background:var(--accent);color:#03110f;font-weight:800;padding:0 18px;border-radius:0 10px 10px 0}
+.nav{display:flex;gap:7px;overflow:auto;padding:0 0 13px}.nav button{background:transparent;color:var(--muted);border:1px solid transparent;border-radius:999px;padding:8px 13px;white-space:nowrap}.nav button.active,.nav button:hover{background:var(--surface2);color:var(--fg);border-color:var(--line)}.nav small{opacity:.6;margin-left:6px;font-size:11px}.nav .sep{flex:none;width:1px;background:var(--line);margin:4px 4px}
+main{padding:26px 0 55px}.hero{display:grid;grid-template-columns:1.3fr .7fr;gap:20px;margin-bottom:30px}.hero-box{min-height:220px;border:1px solid var(--line);border-radius:18px;background:radial-gradient(circle at 85% 20%,#25c7b82b,transparent 35%),linear-gradient(135deg,#171c27,#0f1219);padding:28px;display:flex;flex-direction:column;justify-content:center;min-width:0}.hero h1{font-size:clamp(28px,4vw,48px);line-height:1.02;margin:0 0 10px}.hero p{color:var(--muted);max-width:65ch;margin:0 0 20px}.hero-actions{display:flex;gap:10px;flex-wrap:wrap}.primary,.secondary{border-radius:9px;padding:11px 16px;font-weight:800;border:1px solid var(--line);text-decoration:none;display:inline-block}.primary{background:var(--accent);color:#03110f;border-color:var(--accent)}.secondary{background:var(--surface);color:var(--fg)}.primary:disabled{opacity:.5;cursor:not-allowed}
+.addon-mini{display:grid;gap:8px;margin:12px 0 16px;padding:0;list-style:none}.addon-mini li{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--fg);min-width:0}.addon-mini li span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--muted)}.dot.ok{background:var(--ok)}.dot.bad{background:var(--danger)}
+.section{margin:30px 0}.section-head{display:flex;justify-content:space-between;align-items:end;gap:15px;margin-bottom:14px}.section h2{font-size:22px;margin:0}.section-note{font-size:12px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:20px 15px}.card{min-width:0;background:transparent;border:0;color:var(--fg);text-align:left;padding:0;cursor:pointer;align-self:start}.poster{aspect-ratio:2/3;border-radius:9px;overflow:hidden;background:var(--surface);border:1px solid var(--line);position:relative}.poster img{width:100%;height:100%;display:block;object-fit:cover;transition:.25s}.card:hover .poster img{transform:scale(1.04)}.card:hover .poster{border-color:#596276}.badge{position:absolute;left:8px;top:8px;background:#000b;border:1px solid #ffffff22;border-radius:6px;padding:4px 7px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.badge.seen{color:var(--accent)}.fav{position:absolute;right:7px;top:7px;width:34px;height:34px;border-radius:50%;border:1px solid #ffffff26;background:#000b;color:#fff;font-size:18px;line-height:1}.fav.on{color:var(--accent)}.card-title{font-size:14px;font-weight:750;line-height:1.3;margin:8px 0 2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.meta{color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.empty{padding:40px 15px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px;grid-column:1/-1}.skeleton{background:var(--surface);border-radius:9px;aspect-ratio:2/3;animation:pulse 1.1s infinite}.skeleton-card .poster{border:0}@keyframes pulse{50%{opacity:.45}}
+.notice{padding:10px 12px;border:1px solid #25c7b833;background:#25c7b80c;border-radius:8px;color:#b8eae5;font-size:12px}.notice.bad{border-color:#ff687855;background:#ff68780f;color:#ffd0d5;margin-bottom:10px}.notice code{font-family:ui-monospace,Menlo,monospace}
+/* Ficha */
+.modal{position:fixed;inset:0;z-index:50;background:#000b;display:flex;align-items:center;justify-content:center;padding:20px}.modal-box{width:min(850px,100%);max-height:90vh;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}.detail{display:grid;grid-template-columns:210px 1fr;gap:22px;padding:22px}.detail>div{min-width:0}.detail-poster{width:100%;aspect-ratio:2/3;border-radius:8px;object-fit:cover;background:var(--surface2)}.detail h2{font-size:30px;margin:0 0 6px;text-wrap:balance}.detail .meta{margin-bottom:14px;white-space:normal}.close-row{display:flex;justify-content:flex-end;padding:12px 14px 0}.pill{display:inline-block;background:var(--surface2);border:1px solid var(--line);padding:5px 8px;border-radius:999px;color:var(--muted);font-size:11px;margin:2px}.desc{color:var(--muted);line-height:1.55}.watch-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.episodes{margin-top:18px;display:grid;gap:10px}.episodes select{background:var(--surface2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;justify-self:start}.ep-list{display:grid;gap:6px;max-height:300px;overflow:auto}.ep{display:flex;gap:10px;align-items:center;text-align:left;background:var(--surface2);border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:9px 11px}.ep:hover{border-color:var(--accent)}.ep b{color:var(--accent);font-variant-numeric:tabular-nums;flex:none}.ep span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Reproductor */
+.player{position:fixed;inset:0;z-index:60;background:#000d;display:flex;justify-content:center;overflow:auto;padding:20px}.player-box{width:min(1100px,100%);height:max-content;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);margin:auto}.screen{aspect-ratio:16/9;background:#000;position:relative;display:grid;place-items:center;color:#c9ccd3}.screen video{position:absolute;inset:0;width:100%;height:100%;background:#000}.screen img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:.25}.screen p{position:relative;margin:0;padding:18px;text-align:center;max-width:60ch}.player-info{padding:18px 20px 22px}.player-top{display:flex;justify-content:space-between;gap:12px;align-items:start}.player-top>div{min-width:0}.player-top h2{margin:0;font-size:24px}.close{background:var(--surface2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:9px 13px}
+.sources-head{margin:16px 0 8px;font-weight:800;font-size:13px}.sources{display:grid;gap:7px;max-height:280px;overflow:auto}.source{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;padding:9px 12px;border:1px solid var(--line);color:var(--fg);background:var(--surface2);border-radius:8px}.source span{min-width:0;overflow-wrap:anywhere}.source b{display:block;font-size:13px}.source small{color:var(--muted);font-size:11px;white-space:pre-line}.source em{flex:none;font-style:normal;font-size:11px;font-weight:800;color:var(--accent)}.source.selected{border-color:var(--accent);background:#25c7b81a}.source.off{opacity:.5}.source.off em{color:var(--muted)}
+/* Addons */
+.addon-list{display:grid;gap:8px;margin:0 0 14px;padding:0;list-style:none}.addon-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface2)}.addon-list .who{min-width:0;display:grid;gap:2px}.addon-list .who b{display:flex;align-items:center;gap:8px}.addon-list .url{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);overflow-wrap:anywhere}.add{display:flex;gap:8px;flex-wrap:wrap}.add input{flex:1;min-width:0;background:var(--surface2);border:1px solid var(--line);color:var(--fg);border-radius:99px;padding:11px 12px}.pad{padding:6px 22px 22px}.pad h2{margin:0 0 14px;font-size:24px}.hint{color:var(--muted);font-size:12px;margin:10px 0 0}
+footer{border-top:1px solid var(--line);color:var(--muted);padding:22px 0;font-size:12px}
+@media(max-width:760px){.wrap{width:min(100% - 22px,1380px)}.top{flex-wrap:wrap}.brand{flex:1}.search{order:3;flex-basis:100%;max-width:none}.hero{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 10px}.detail{grid-template-columns:120px 1fr;padding:16px;gap:14px}.detail h2{font-size:22px}.player{padding:0}.player-box{border-radius:0;min-height:100vh}.player-info{padding:15px}}
+@media(min-width:1100px){.grid{grid-template-columns:repeat(7,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">Cinemateca <span>Libre</span></div>
+      <form class="search" id="searchForm" role="search">
+        <input id="searchInput" type="search" placeholder="Buscar película, serie o caricatura…" autocomplete="off" aria-label="Buscar">
+        <button>Buscar</button>
+      </form>
+      <button class="secondary" id="addonsBtn" type="button">Addons</button>
+    </div>
+    <nav class="nav" id="nav" aria-label="Catálogos"></nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="notices"></div>
+  <section class="hero">
+    <div class="hero-box">
+      <h1>Tu biblioteca de cine, estilo streaming.</h1>
+      <p>Busca títulos en todos tus addons, guarda favoritos y retoma lo último que viste.</p>
+      <div class="hero-actions"><button class="primary" id="browseBtn" type="button">Explorar catálogo</button><button class="secondary" id="myListBtn" type="button">Mi lista</button></div>
+    </div>
+    <div class="hero-box">
+      <div class="notice"><b>Addons conectados</b></div>
+      <ul class="addon-mini" id="addonMini"></ul>
+      <button class="secondary" id="manageBtn" type="button">Administrar addons</button>
+    </div>
+  </section>
+
+  <section class="section" id="continueSection" hidden>
+    <div class="section-head"><div><h2>Continuar viendo</h2><div class="section-note">Tus últimos títulos abiertos</div></div></div>
+    <div class="grid" id="continueGrid"></div>
+  </section>
+
+  <section class="section" id="mainSection">
+    <div class="section-head"><div><h2 id="heading">Cargando addons…</h2><div class="section-note" id="count"></div></div></div>
+    <div class="grid" id="grid"></div>
+    <div style="display:flex;justify-content:center;margin-top:26px"><button class="secondary" id="more" type="button" hidden>Cargar más</button></div>
+  </section>
+</main>
+
+<footer><div class="wrap">Cinemateca Libre · Reproductor compatible con el protocolo de addons de Stremio. El contenido lo proveen los addons que tú conectas.</div></footer>
+
+<!-- Ficha -->
+<div class="modal hidden" id="detailModal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+  <div class="modal-box">
+    <div class="close-row"><button class="close" id="detailClose" type="button">Cerrar</button></div>
+    <div class="detail">
+      <img id="detailPoster" class="detail-poster" alt="">
+      <div>
+        <h2 id="detailTitle"></h2>
+        <div id="detailMeta" class="meta"></div>
+        <div id="detailTags"></div>
+        <p id="detailDesc" class="desc"></p>
+        <div class="watch-actions"><button class="primary" id="detailPlay" type="button">▶ Reproducir</button><button class="secondary" id="detailFav" type="button">＋ Mi lista</button><button class="secondary" id="detailSeen" type="button">✓ Marcar visto</button></div>
+        <div class="episodes" id="episodes" hidden>
+          <select id="seasonSelect" aria-label="Temporada"></select>
+          <div class="ep-list" id="epList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Reproductor -->
+<div class="player hidden" id="player" role="dialog" aria-modal="true" aria-labelledby="playerTitle">
+  <div class="player-box">
+    <div class="screen" id="screen"></div>
+    <div class="player-info">
+      <div class="player-top"><div><h2 id="playerTitle"></h2><div id="playerMeta" class="meta"></div></div><button class="close" id="playerClose" type="button">Cerrar</button></div>
+      <div class="sources-head">Fuentes disponibles</div>
+      <div class="sources" id="sources"></div>
+      <div class="watch-actions"><button class="secondary" id="playerFav" type="button">＋ Mi lista</button><button class="secondary" id="playerSeen" type="button">✓ Marcar visto</button><a class="secondary" id="externalLink" target="_blank" rel="noopener" hidden>Abrir ficha oficial</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- Addons -->
+<div class="modal hidden" id="addonsModal" role="dialog" aria-modal="true" aria-labelledby="addonsTitle">
+  <div class="modal-box" style="width:min(640px,100%)">
+    <div class="close-row"><button class="close" id="addonsClose" type="button">Cerrar</button></div>
+    <div class="pad">
+      <h2 id="addonsTitle">Tus addons</h2>
+      <ul class="addon-list" id="addonList"></ul>
+      <form class="add" id="addForm">
+        <input id="addonUrl" type="url" required placeholder="https://…/manifest.json" aria-label="Dirección del manifest">
+        <button class="primary" type="submit">Añadir</button>
+      </form>
+      <p class="hint">Pega la dirección que termina en /manifest.json. Los enlaces stremio:// también sirven.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_ADDONS = ["http://127.0.0.1:7000/manifest.json"];
+const $ = (id) => document.getElementById(id);
+const grid = $("grid"), more = $("more"), nav = $("nav");
+
+// ---------- almacenamiento local ----------
+const store = {
+  get(key, fallback) { try { const v = JSON.parse(localStorage.getItem("cinemateca_" + key)); return v ?? fallback; } catch { return fallback; } },
+  set(key, value) { try { localStorage.setItem("cinemateca_" + key, JSON.stringify(value)); } catch {} }
+};
+let favorites = store.get("favs", []);   // [{id,type,name,poster,releaseInfo}]
+let history = store.get("hist", []);
+let seen = store.get("seen", []);        // [id]
+const slim = (m) => ({ id: m.id, type: m.type || "movie", name: m.name, poster: m.poster, releaseInfo: m.releaseInfo });
+const isFav = (id) => favorites.some((f) => f.id === id);
+const isSeen = (id) => seen.includes(id);
+function toggleFav(m) { favorites = isFav(m.id) ? favorites.filter((f) => f.id !== m.id) : [slim(m), ...favorites]; store.set("favs", favorites); }
+function markSeen(id) { if (!isSeen(id)) { seen.push(id); store.set("seen", seen); } }
+function addHistory(m) { history = [slim(m), ...history.filter((h) => h.id !== m.id)].slice(0, 14); store.set("hist", history); renderContinue(); }
+
+// ---------- cliente del protocolo de addons ----------
+let addons = [];
+const loadUrls = () => store.get("addons", DEFAULT_ADDONS.slice());
+const saveUrls = (u) => store.set("addons", u);
+const baseOf = (url) => url.replace(/\/manifest\.json(\?.*)?$/, "");
+async function getJSON(url) { const r = await fetch(url); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }
+async function loadAddons() {
+  addons = await Promise.all(loadUrls().map(async (url) => {
+    try { return { url, base: baseOf(url), manifest: await getJSON(url) }; }
+    catch (e) { return { url, base: baseOf(url), error: e.message }; }
+  }));
+}
+function supports(a, resource, type, id) {
+  const m = a.manifest; if (!m) return false;
+  return (m.resources || []).some((r) => {
+    const name = typeof r === "string" ? r : r.name;
+    if (name !== resource) return false;
+    const types = (typeof r === "object" && r.types) || m.types || [];
+    const prefixes = (typeof r === "object" && r.idPrefixes) || m.idPrefixes;
+    if (type && !types.includes(type)) return false;
+    if (id && prefixes && prefixes.length && !prefixes.some((p) => id.startsWith(p))) return false;
+    return true;
+  });
+}
+const extraPath = (extra) => { const p = Object.entries(extra).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => k + "=" + encodeURIComponent(v)); return p.length ? "/" + p.join("&") : ""; };
+const catalogUrl = (a, c, extra = {}) => `${a.base}/catalog/${c.type}/${encodeURIComponent(c.id)}${extraPath(extra)}.json`;
+const resUrl = (a, res, type, id) => `${a.base}/${res}/${type}/${encodeURIComponent(id)}.json`;
+const hasExtra = (c, n) => (c.extra || []).some((e) => e.name === n) || (c.extraSupported || []).includes(n);
+const needsExtra = (c) => (c.extra || []).some((e) => e.isRequired) || (c.extraRequired || []).length > 0;
+
+// ---------- catálogos ----------
+const view = { addon: null, catalog: null, skip: 0, pageSize: 0, loading: false };
+
+function buildNav() {
+  nav.innerHTML = "";
+  const live = addons.filter((a) => a.manifest);
+  const multi = live.length > 1;
+  let first = null;
+  live.forEach((a) => (a.manifest.catalogs || []).filter((c) => !needsExtra(c)).forEach((c) => {
+    const b = document.createElement("button"); b.type = "button";
+    b.innerHTML = esc(c.name || c.id) + (multi ? `<small>${esc(a.manifest.name)}</small>` : "");
+    b.onclick = () => { setActive(b); openCatalog(a, c); };
+    nav.appendChild(b); if (!first) first = { b, a, c };
+  }));
+  const sep = document.createElement("span"); sep.className = "sep"; nav.appendChild(sep);
+  const fav = document.createElement("button"); fav.type = "button"; fav.textContent = "♥ Mi lista"; fav.onclick = () => { setActive(fav); showFavorites(); }; nav.appendChild(fav);
+  const hist = document.createElement("button"); hist.type = "button"; hist.textContent = "◷ Historial"; hist.onclick = () => { setActive(hist); showHistory(); }; nav.appendChild(hist);
+  if (first) { setActive(first.b); openCatalog(first.a, first.c); }
+  else { $("heading").textContent = "Ningún catálogo disponible"; $("count").textContent = ""; grid.innerHTML = `<div class="empty">Enciende tu addon o añade uno desde el botón Addons.</div>`; }
+}
+function setActive(btn) { nav.querySelectorAll("button").forEach((x) => x.classList.toggle("active", x === btn)); }
+
+async function openCatalog(a, c) {
+  Object.assign(view, { addon: a, catalog: c, skip: 0 });
+  $("heading").textContent = c.name \vert{}\vert{} c.id; $("count").textContent = a.manifest.name;
+  grid.innerHTML = ""; await fetchPage();
+}
+async function fetchPage() {
+  if (view.loading) return; view.loading = true;
+  more.hidden = true; showSkeleton();
+  try {
+    const extra = view.skip && hasExtra(view.catalog, "skip") ? { skip: view.skip } : {};
+    const data = await getJSON(catalogUrl(view.addon, view.catalog, extra));
+    clearSkeleton();
+    const metas = data.metas || [];
+    if (!metas.length && !view.skip) grid.innerHTML = `<div class="empty">Este catálogo está vacío.</div>`;
+    metas.forEach((m) => grid.appendChild(card({ type: view.catalog.type, ...m })));
+    if (!view.skip) view.pageSize = metas.length;
+    more.hidden = !(hasExtra(view.catalog, "skip") && metas.length && metas.length >= view.pageSize);
+  } catch { clearSkeleton(); grid.insertAdjacentHTML("beforeend", `<div class="empty">El addon no respondió. Revisa que siga encendido y vuelve a intentar.</div>`); }
+  finally { view.loading = false; }
+}
+async function search(term) {
+  setActive(null); more.hidden = true;
+  $("heading").textContent = `Resultados para “${term}”`; grid.innerHTML = ""; showSkeleton();
+  const jobs = [];
+  addons.forEach((a) => (a.manifest?.catalogs || []).forEach((c) => {
+    if (hasExtra(c, "search")) jobs.push(getJSON(catalogUrl(a, c, { search: term })).then((d) => (d.metas || []).map((m) => ({ type: c.type, ...m }))).catch(() => []));
+  }));
+  const seenIds = new Set();
+  const found = (await Promise.all(jobs)).flat().filter((m) => !seenIds.has(m.id) && seenIds.add(m.id));
+  clearSkeleton();
+  $("count").textContent = found.length + " resultados";
+  if (!jobs.length) grid.innerHTML = `<div class="empty">Ninguno de tus addons permite buscar.</div>`;
+  else if (!found.length) grid.innerHTML = `<div class="empty">No encontramos nada con “${esc(term)}”. Prueba otra palabra.</div>`;
+  found.forEach((m) => grid.appendChild(card(m)));
+}
+function showFavorites() {
+  more.hidden = true; $("heading").textContent = "Mi lista"; $("count").textContent = favorites.length + " guardados"; grid.innerHTML = "";
+  if (!favorites.length) { grid.innerHTML = `<div class="empty">Tu lista está vacía. Presiona ♡ en un título para guardarlo.</div>`; return; }
+  favorites.forEach((m) => grid.appendChild(card(m)));
+}
+function showHistory() {
+  more.hidden = true; $("heading").textContent = "Historial"; $("count").textContent = history.length + " títulos recientes"; grid.innerHTML = "";
+  if (!history.length) { grid.innerHTML = `<div class="empty">Todavía no tienes historial.</div>`; return; }
+  history.forEach((m) => grid.appendChild(card(m)));
+}
+function renderContinue() {
+  const g = $("continueGrid"); g.innerHTML = "";
+  $("continueSection").hidden = !history.length;
+  history.slice(0, 7).forEach((m) => g.appendChild(card(m)));
+}
+
+function card(m) {
+  const el = document.createElement("article"); el.className = "card"; el.tabIndex = 0;
+  const kind = m.type === "series" ? "Serie" : m.type === "movie" ? "Película" : (m.type || "");
+  el.innerHTML = `<div class="poster">${m.poster ? `<img loading="lazy" alt="" src="${esc(m.poster)}">` : ""}<span class="badge ${isSeen(m.id) ? "seen" : ""}">${isSeen(m.id) ? "Visto" : esc(kind)}</span><button class="fav ${isFav(m.id) ? "on" : ""}" type="button" aria-label="${isFav(m.id) ? "Quitar de mi lista" : "Añadir a mi lista"}">${isFav(m.id) ? "♥" : "♡"}</button></div><div class="card-title">${esc(m.name || m.id)}</div><div class="meta">${esc(m.releaseInfo || "")}</div>`;
+  el.onclick = () => openDetail(m);
+  el.onkeydown = (e) => { if (e.key === "Enter") openDetail(m); };
+  el.querySelector(".fav").onclick = (e) => {
+    e.stopPropagation(); toggleFav(m);
+    const f = e.currentTarget; f.classList.toggle("on", isFav(m.id)); f.textContent = isFav(m.id) ? "♥" : "♡";
+    if ($("heading").textContent === "Mi lista") showFavorites();
+  };
+  return el;
+}
+function showSkeleton() { for (let i = 0; i < 14; i++) { const c = document.createElement("div"); c.className = "card skeleton-card"; c.innerHTML = '<div class="poster skeleton"></div>'; grid.appendChild(c); } }
+function clearSkeleton() { grid.querySelectorAll(".skeleton-card").forEach((x) => x.remove()); }
+
+// ---------- ficha ----------
+let current = null;      // título abierto
+let currentMeta = null;  // meta completa del addon
+
+async function openDetail(m) {
+  current = { type: "movie", ...m }; currentMeta = null;
+  $("detailPoster").src = m.poster || "";
+  $("detailTitle").textContent = m.name || m.id;
+  $("detailMeta").textContent = [m.releaseInfo, current.type === "series" ? "Serie" : "Película"].filter(Boolean).join(" · ");
+  $("detailTags").innerHTML = ""; $("detailDesc").textContent = m.description || "";
+  $("episodes").hidden = true; $("detailPlay").hidden = current.type === "series";
+  refreshButtons(); open("detailModal");
+
+  const a = addons.find((x) => supports(x, "meta", current.type, current.id));
+  if (!a) return;
+  try {
+    const { meta } = await getJSON(resUrl(a, "meta", current.type, current.id));
+    if (!meta || current.id !== m.id) return;
+    currentMeta = meta;
+    if (meta.poster) $("detailPoster").src = meta.poster;
+    $("detailTitle").textContent = meta.name || m.name;
+    $("detailMeta").textContent = [meta.releaseInfo || meta.year, meta.runtime, meta.imdbRating ? "IMDb " + meta.imdbRating : ""].filter(Boolean).join(" · ");
+    $("detailTags").innerHTML = (meta.genres || []).slice(0, 8).map((g) => `<span class="pill">${esc(g)}</span>`).join("");
+    $("detailDesc").textContent = meta.description || "Sin descripción disponible.";
+    const videos = (meta.videos || []).filter((v) => v.id);
+    if (current.type === "series" || videos.length > 1) renderEpisodes(videos);
+  } catch {}
+}
+function renderEpisodes(videos) {
+  if (!videos.length) return;
+  $("detailPlay").hidden = true; $("episodes").hidden = false;
+  const seasons = [...new Set(videos.map((v) => v.season ?? 0))].sort((x, y) => (x || 999) - (y || 999));
+  const sel = $("seasonSelect");
+  sel.innerHTML = seasons.map((s) => `<option value="${s}">${s ? "Temporada " + s : "Especiales"}</option>`).join("");
+  const draw = () => {
+    const s = Number(sel.value);
+    $("epList").innerHTML = "";
+    videos.filter((v) => (v.season ?? 0) === s).sort((x, y) => (x.episode || 0) - (y.episode || 0)).forEach((v) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "ep";
+      b.innerHTML = `<b>${v.episode ? "E" + String(v.episode).padStart(2, "0") : "•"}</b><span>${esc(v.title || v.name || "Episodio " + (v.episode || ""))}</span>`;
+      b.onclick = () => openPlayer(v.id, `${currentMeta.name} · ${s ? "T" + s + " " : ""}E${v.episode || ""} ${v.title || v.name || ""}`.trim());
+      $("epList").appendChild(b);
+    });
+  };
+  sel.onchange = draw; draw();
+}
+function refreshButtons() {
+  if (!current) return;
+  const f = isFav(current.id) ? "♥ Quitar de mi lista" : "＋ Mi lista", v = isSeen(current.id) ? "✓ Visto" : "✓ Marcar visto";
+  $("detailFav").textContent = f; $("playerFav").textContent = f; $("detailSeen").textContent = v; $("playerSeen").textContent = v;
+}
+
+// ---------- reproductor con soporte para WebTorrent ----------
+let playable = [];
+let client = null; // Instancia global de WebTorrent
+
+function initWebTorrent() {
+  if (!client && window.WebTorrent) {
+    client = new WebTorrent();
+  }
+}
+
+async function openPlayer(videoId, label) {
+  addHistory(current);
+  close("detailModal");
+  $("playerTitle").textContent = label || current.name;
+  $("playerMeta").textContent = currentMeta?.releaseInfo || current.releaseInfo || "";
+  const site = currentMeta?.website;
+  $("externalLink").hidden = !site; if (site) $("externalLink").href = site;
+  setScreen(`<img alt="" src="${esc(current.poster || "")}"><p>Buscando fuentes…</p>`);
+  $("sources").innerHTML = ""; refreshButtons(); open("player");
+
+  const type = current.type || "movie";
+  const lists = await Promise.all(addons.filter((a) => supports(a, "stream", type, videoId)).map((a) =>
+    getJSON(resUrl(a, "stream", type, videoId)).then((d) => (d.streams || []).map((s) => ({ ...s, addon: a.manifest.name }))).catch(() => [])));
+  const streams = lists.flat();
+
+  // Aceptamos streams con enlace HTTP directo (url) O fuentes Torrent (infoHash / magnet)
+  playable = streams.filter((s) => s.url || s.infoHash || (s.behaviorHints && s.behaviorHints.magnetUrl));
+  const box = $("sources"); box.innerHTML = "";
+
+  if (!streams.length) { setScreen(`<p>Ningún addon devolvió fuentes para este título.</p>`); return; }
+
+  streams.forEach((s) => {
+    const b = document.createElement("button"); b.type = "button";
+    const isTorrent = !!(s.infoHash || (s.behaviorHints && s.behaviorHints.magnetUrl));
+    const ok = !!s.url || isTorrent;
+    const ext = !ok && (s.externalUrl || s.ytId);
+    
+    b.className = "source" + (ok || ext ? "" : " off");
+    const labelText = s.url ? "Reproducir (Directo)" : isTorrent ? "Reproducir (P2P Torrent)" : ext ? "Abrir fuera" : "No compatible";
+    
+    b.innerHTML = `<span><b>${esc(s.name || s.addon)}</b><small>${esc(s.title || s.description || "")}</small></span><em>${labelText}</em>`;
+    b.onclick = () => choose(s, b);
+    s._btn = b; box.appendChild(b);
+  });
+
+  if (playable.length) choose(playable[0], playable[0]._btn);
+  else setScreen(`<img alt="" src="${esc(current.poster || "")}"><p>Ninguna de estas fuentes es un enlace de video o torrent compatible.</p>`);
+}
+
+function choose(s, btn) {
+  document.querySelectorAll(".source").forEach((x) => x.classList.toggle("selected", x === btn));
+  
+  // Detener torrents activos anteriores si los hay
+  if (client) {
+    client.torrents.forEach((t) => t.destroy());
+  }
+
+  // 1. Enlace HTTP directo
+  if (s.url) return playUrl(s);
+
+  // 2. Fuente de Torrent (infoHash o magnetUrl)
+  const magnet = s.behaviorHints?.magnetUrl || (s.infoHash ? `magnet:?xt=urn:btih:${s.infoHash}` : null);
+  if (magnet) return playTorrent(magnet, s);
+
+  // 3. Enlace externo (YouTube u otro)
+  if (s.externalUrl || s.ytId) { 
+    window.open(s.externalUrl || "https://www.youtube.com/watch?v=" + encodeURIComponent(s.ytId), "_blank", "noopener"); 
+    return; 
+  }
+
+  setScreen(`<p>Esta fuente no es compatible para reproducir en el navegador.</p>`);
+}
+
+function playUrl(s) {
+  setScreen(`<video controls playsinline autoplay src="${esc(s.url)}"></video>`);
+  $("screen").querySelector("video").addEventListener("error", () => {
+    const next = playable[playable.indexOf(s) + 1];
+    if (next) choose(next, next._btn);
+    else setScreen(`<p>El navegador no pudo abrir la fuente. Puede que el formato de video o audio no sea soportado nativamente (ejemplo .mkv o H.265).</p>`);
+  }, { once: true });
+}
+
+function playTorrent(magnetURI, streamObj) {
+  initWebTorrent();
+  if (!client) {
+    setScreen(`<p>La librería WebTorrent no se pudo cargar correctamente.</p>`);
+    return;
+  }
+
+  setScreen(`<p>Conectando a la red P2P y buscando pares (peers)…</p>`);
+
+  client.add(magnetURI, (torrent) => {
+    let file = null;
+    if (streamObj.fileIdx !== undefined && torrent.files[streamObj.fileIdx]) {
+      file = torrent.files[streamObj.fileIdx];
+    } else {
+      file = torrent.files.find((f) => f.name.endsWith(".mp4") || f.name.endsWith(".mkv") || f.name.endsWith(".webm"));
+      if (!file) {
+        file = torrent.files.reduce((a, b) => (a.length > b.length ? a : b));
+      }
+    }
+
+    if (!file) {
+      setScreen(`<p>No se encontró ningún archivo de video en el torrent.</p>`);
+      return;
+    }
+
+    const screen = $("screen");
+    screen.innerHTML = "";
+    file.appendTo(screen, { autoplay: true, controls: true }, (err, elem) => {
+      if (err) {
+        setScreen(`<p>Error al reproducir el video: ${esc(err.message)}</p>`);
+      }
+    });
+  });
+
+  client.on("error", (err) => {
+    setScreen(`<p>Error en la red Torrent: ${esc(err.message)}</p>`);
+  });
+}
+
+function setScreen(html) { $("screen").innerHTML = html; }
+
+function closePlayer() { 
+  if (client) {
+    client.torrents.forEach((t) => t.destroy());
+  }
+  close("player"); 
+  setScreen(""); 
+}
+
+// ---------- addons ----------
+function renderAddons() {
+  $("addonMini").innerHTML = addons.length ? addons.map((a) => `<li><span class="dot ${a.manifest ? "ok" : "bad"}"></span><span>${esc(a.manifest?.name || a.url)}</span></li>`).join("") : `<li>Sin addons</li>`;
+  const list = $("addonList"); list.innerHTML = "";
+  addons.forEach((a, i) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<div class="who"><b><span class="dot ${a.manifest ? "ok" : "bad"}"></span>${esc(a.manifest?.name || "Sin conexión")}</b><span class="url">${esc(a.url)}</span></div>`;
+    const rm = document.createElement("button"); rm.type = "button"; rm.className = "close"; rm.textContent = "Quitar";
+    rm.onclick = async () => { const u = loadUrls(); u.splice(i, 1); saveUrls(u); await refresh(); };
+    li.appendChild(rm); list.appendChild(li);
+  });
+  if (!addons.length) list.innerHTML = `<li>No tienes addons. Añade uno abajo.</li>`;
+  $("notices").innerHTML = addons.filter((a) => a.error).map((a) => `<div class="notice bad">No se pudo conectar con <code>${esc(a.url)}</code>. Si es tu addon local, enciéndelo con <code>npm start</code>.</div>`).join("");
+}
+async function refresh() { await loadAddons(); renderAddons(); buildNav(); }
+
+// ---------- utilidades ----------
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function open(id) { $(id).classList.remove("hidden"); document.body.style.overflow = "hidden"; }
+function close(id) { $(id).classList.add("hidden"); if (["player", "detailModal", "addonsModal"].every((x) => $(x).classList.contains("hidden"))) document.body.style.overflow = ""; }
+
+// ---------- eventos ----------
+$("searchForm").onsubmit = (e) => { e.preventDefault(); const q = $("searchInput").value.trim(); if (q) search(q); };
+more.onclick = () => { view.skip += view.pageSize || 50; fetchPage(); };
+$("browseBtn").onclick = () => $("mainSection").scrollIntoView({ behavior: "smooth" });
+$("myListBtn").onclick = () => { setActive([...nav.querySelectorAll("button")].find((b) => b.textContent === "♥ Mi lista")); showFavorites(); $("mainSection").scrollIntoView({ behavior: "smooth" }); };
+$("addonsBtn").onclick = $("manageBtn").onclick = () => open("addonsModal");
+$("addonsClose").onclick = () => close("addonsModal");
+$("addForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const url = $("addonUrl").value.trim().replace(/^stremio:\/\//, "https://");
+  const u = loadUrls(); if (!u.includes(url)) u.push(url); saveUrls(u);
+  $("addonUrl").value = ""; await refresh();
+};
+$("detailClose").onclick = () => close("detailModal");
+$("detailPlay").onclick = () => current && openPlayer(current.id);
+$("detailFav").onclick = $("playerFav").onclick = () => { if (current) { toggleFav(current); refreshButtons(); } };
+$("detailSeen").onclick = $("playerSeen").onclick = () => { if (current) { markSeen(current.id); refreshButtons(); } };
+$("playerClose").onclick = closePlayer;
+["detailModal", "addonsModal"].forEach((id) => $(id).addEventListener("click", (e) => { if (e.target.id === id) close(id); }));
+$("player").addEventListener("click", (e) => { if (e.target.id === "player") closePlayer(); });
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (!$("player").classList.contains("hidden")) closePlayer();
+  else if (!$("detailModal").classList.contains("hidden")) close("detailModal");
+  else if (!$("addonsModal").classList.contains("hidden")) close("addonsModal");
+});
+
+renderContinue();
+refresh();
+</script>
+</body>
+</html>
